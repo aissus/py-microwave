@@ -19,6 +19,9 @@ import schemdraw.elements as e
 import os
 import svgutils.compose as sc
 
+import sys
+sys.path.append('/home/aissa/Downloads/test/py-microwave/modules')
+
 ### convert mag, phase into complex number
 ### phase is given in degrees
 
@@ -44,6 +47,11 @@ def magphase_tex(c):
 def magphasetex(c):  # alternative without underscore
     return magphase_tex(c)
 
+def my_magphase_tex(c):
+    """
+    Returns a TeX formatted String to print complex numbers in ampl. and phase
+    """
+    return r' {0:6.3f}$\angle{1:5.1f}^\circ$ '.format(abs(c), angle(c) * 180 / pi)
 
 def reflcoeff(Z, Z0=50):
     """
@@ -104,13 +112,13 @@ def gam(Z, Z0):
 
 
 # Superimpose a paper chart onto the plot ##############################
-def superimposeChart(fig, svgfile='smith_paper.svg'):
-    fig.set_size_inches(18, 18)
+def superimposeChart(fig, svgfile):
+    fig.set_size_inches(7.433, 7.433)
     plt.tight_layout(pad=0.0)
     fig.savefig('smithdata.svg', transparent=True)
-    sc.Figure("350mm", "350mm",
-              sc.Panel(sc.SVG(os.path.dirname(__file__)+"/smith_mwl_chartonly.svg").scale(1.27).move(174, 195)),
-              sc.Panel(sc.SVG("smithdata.svg").scale(1.0).move(0, 0))
+    sc.Figure("188.798mm", "188.798mm",
+              sc.Panel(sc.SVG(os.path.dirname(__file__)+"/smith_mwl_chartonly_without_ruler_test.svg").scale(1.27).move(94.399,94.399)),
+              sc.Panel(sc.SVG("smithdata.svg").scale(1.0).move(0,0))
               ).save(svgfile)
     print("Saved as ",svgfile)
     return svgfile
@@ -194,7 +202,7 @@ class Smith:
             self.addimpedancegrid()
         elif typ == 'inverted' or typ == 'admittance':
             if not ('c' in self.kwargs or 'color' in self.kwargs):
-                self.kwargs['color'] = 'b'
+                self.kwargs['color'] = 't'
             self.addadmittancegrid()
         elif typ == 'both':
             if not ('c' in self.kwargs or 'color' in self.kwargs):
@@ -202,6 +210,15 @@ class Smith:
             self.addimpedancegrid()
             if self.kwargs['color']=='r':
                 self.kwargs['color'] = 'b'
+            self.addadmittancegrid()
+        elif typ == 'none':
+            if not ('c' in self.kwargs or 'color' in self.kwargs):
+                self.kwargs['color'] = 'r'
+                self.kwargs['alpha'] = 0
+            self.addimpedancegrid()
+            if self.kwargs['color']=='r':
+                self.kwargs['color'] = 'b'
+                self.kwargs['alpha'] = 0
             self.addadmittancegrid()
         elif typ == 'paper':
             self.addemptygrid()
@@ -212,8 +229,8 @@ class Smith:
     def addemptygrid(self,visible = False):
         self.ax.set_aspect('equal', anchor='C')
         self.fontscale = self.fontscale *2
-        self.ax.plot(sin(linspace(0, 2. * pi)), cos(linspace(0, 2. * pi)), 'k--', lw=1.) # plot outline
-        self.ax.plot(1.5*sin(linspace(0, 2. * pi)), 1.5*cos(linspace(0, 2. * pi)), 'k--', lw=0.)  # plot outline invisible
+        self.ax.plot(sin(linspace(0, 2. * pi)), cos(linspace(0, 2. * pi)), 'k--', lw=1,alpha=0) # plot outline
+        self.ax.plot(1.5*sin(linspace(0, 2. * pi)), 1.5*cos(linspace(0, 2. * pi)), 'k--', lw=1,alpha=0)  # plot outline invisible
         if not visible:
             self.ax.axis('off')
 
@@ -519,19 +536,26 @@ class Smith:
         patch = plt.Circle((real(g), imag(g)), 0.012, **kwargs)
         self.ax.add_patch(patch)
         Z = around(real(Z), 3) + 1j * around(imag(Z), 3)  # fix small non-zero values
+        Gamma_tex = my_magphase_tex(g)
         if abs(Z) < 1e-10:  # short
             lab = '%s = 0 \n $Y$ = $\infty$' % label
         elif abs(Z) > 1e20:  # open
             lab = '%s = $\infty$ \n $Y$ = 0 ' % label
         else:
             Y = 1 / Z
-            lab = '%s = %4.2f%+4.2fj \n $Y$ =  %4.2g%+4.2fj' % (
-                label, real(Z / self.Z0), imag(Z / self.Z0), real(self.Z0 * Y), imag(self.Z0 * Y))
+            # lab = '%s = %4.2f%+4.2fj \n $Y$ =  %4.2g%+4.2fj' % (
+                # label, real(Z / self.Z0), imag(Z / self.Z0), real(self.Z0 * Y), imag(self.Z0 * Y)) ## original (normalized)
+            lab = '%s = %4.2f%+4.2fj \n $Y$ =  %4.2g%+4.2fj \n $\Gamma$ = %s' % (
+                label, real(Z), imag(Z), real(Y), imag(Y),Gamma_tex) ## mine (unnormalized) with Gamma
         orix, oriy = (0, 0)
         if ori == 'NE': orix = 1; oriy = 1
         if ori == 'NW': orix = -4.3; oriy = 1
         if ori == 'SE': orix = 1; oriy = -1.6
         if ori == 'SW': orix = -4.3; oriy = -1.6
+        if ori == 'N':  orix = +7; oriy = 0
+        if ori == 'W':  orix = -7; oriy = 0
+        if ori == 'N':  orix = 0; oriy = +4
+        if ori == 'S':  orix = 0; oriy = -4
         self.ax.annotate(lab, xy=(real(g), imag(g)), xycoords='data', fontsize=12 * self.fontscale,
                          xytext=(30 * orix * self.fontscale, 30 * oriy * self.fontscale), textcoords='offset points',
                          bbox=dict(boxstyle="round", fc="0.8", alpha=1.0),

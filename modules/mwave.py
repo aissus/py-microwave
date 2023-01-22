@@ -25,6 +25,9 @@ from numpy import  array,sqrt,pi,log,matrix, conj, angle, zeros, exp, abs, ndim,
 import matplotlib.pyplot as plt
 import sys
 
+sys.path.append('/home/aissa/Downloads/test/py-microwave/modules')
+
+
 try:
     import smith as smi
 except:
